@@ -132,7 +132,6 @@ pub trait Metadata: Send + Sized + 'static {
 
     fn get(session: &Session, id: SpotifyId) -> Box<dyn Future<Item = Self, Error = MercuryError>> {
         let uri = format!("{}/{}", Self::base_url(), id.to_base16());
-        librespot-playlist-support/playlists:metadata/src/lib.rs
         let request = session.mercury().get(uri);
 
         let session = session.clone();
