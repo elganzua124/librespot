@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 extern crate byteorder;
 extern crate futures;
 extern crate linear_map;
@@ -124,11 +127,12 @@ impl AudioFiles for Episode {
 pub trait Metadata: Send + Sized + 'static {
     type Message: protobuf::Message;
 
-    fn base_url() -> &'static str;
+    fn request_url(id: SpotifyId) -> String;
     fn parse(msg: &Self::Message, session: &Session) -> Self;
 
     fn get(session: &Session, id: SpotifyId) -> Box<dyn Future<Item = Self, Error = MercuryError>> {
         let uri = format!("{}/{}", Self::base_url(), id.to_base16());
+        librespot-playlist-support/playlists:metadata/src/lib.rs
         let request = session.mercury().get(uri);
 
         let session = session.clone();
@@ -176,13 +180,20 @@ pub struct Episode {
     pub explicit: bool,
 }
 
-#[derive(Debug, Clone)]
 pub struct Show {
     pub id: SpotifyId,
     pub name: String,
     pub publisher: String,
     pub episodes: Vec<SpotifyId>,
     pub covers: Vec<FileId>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Playlist {
+    pub revision: Vec<u8>,
+    pub user: String,
+    pub name: String,
+    pub tracks: Vec<SpotifyId>,
 }
 
 #[derive(Debug, Clone)]
@@ -195,8 +206,8 @@ pub struct Artist {
 impl Metadata for Track {
     type Message = protocol::metadata::Track;
 
-    fn base_url() -> &'static str {
-        "hm://metadata/3/track"
+    fn request_url(id: SpotifyId) -> String {
+        format!("hm://metadata/3/track/{}", id.to_base16())
     }
 
     fn parse(msg: &Self::Message, session: &Session) -> Self {
@@ -240,8 +251,8 @@ impl Metadata for Track {
 impl Metadata for Album {
     type Message = protocol::metadata::Album;
 
-    fn base_url() -> &'static str {
-        "hm://metadata/3/album"
+    fn request_url(id: SpotifyId) -> String {
+        format!("hm://metadata/3/album/{}", id.to_base16())
     }
 
     fn parse(msg: &Self::Message, _: &Session) -> Self {
@@ -282,11 +293,44 @@ impl Metadata for Album {
     }
 }
 
+impl Metadata for Playlist {
+    type Message = protocol::playlist4changes::SelectedListContent;
+
+    fn request_url(id: SpotifyId) -> String {
+        format!("hm://playlist/v2/playlist/{}", id.to_base62())
+    }
+
+    fn parse(msg: &Self::Message, _: &Session) -> Self {
+
+        let tracks = msg
+            .get_contents()
+            .get_items()
+            .iter()
+            .map(|item| {
+                let uri_split = item.get_uri().split(":");
+                let uri_parts: Vec<&str> = uri_split.collect();
+                SpotifyId::from_base62(uri_parts[2]).unwrap()
+            })
+            .collect::<Vec<_>>();
+        
+        if tracks.len() != msg.get_length() as usize {
+            warn!("Got {} tracks, but the playlist should contain {} tracks.", tracks.len(), msg.get_length());
+        }
+
+        Playlist {
+            revision: msg.get_revision().to_vec(),
+            name: msg.get_attributes().get_name().to_owned(),
+            tracks: tracks,
+            user: msg.get_owner_username().to_string(),
+        }
+    }
+}
+
 impl Metadata for Artist {
     type Message = protocol::metadata::Artist;
 
-    fn base_url() -> &'static str {
-        "hm://metadata/3/artist"
+    fn request_url(id: SpotifyId) -> String {
+        format!("hm://metadata/3/artist/{}", id.to_base16())
     }
 
     fn parse(msg: &Self::Message, session: &Session) -> Self {
