@@ -1,0 +1,1 @@
+{"rustc":13568843128949978479,"features":"[]","target":2494189647099047453,"profile":2574335274271406459,"path":3457293064788086778,"deps":[[4661272131304468439,"futures",false,1406391823622586569]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/relay-70453df3e7972997/dep-lib-relay-70453df3e7972997"}}],"rustflags":[],"metadata":13707499859015715142}
