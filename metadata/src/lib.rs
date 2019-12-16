@@ -82,7 +82,7 @@ impl AudioItem {
     }
 }
 
-pub trait AudioFiles {
+trait AudioFiles {
     fn get_audio_item(
         session: &Session,
         id: SpotifyId,
