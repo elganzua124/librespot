@@ -73,7 +73,10 @@ impl AudioItem {
         id: SpotifyId,
     ) -> Box<dyn Future<Item = AudioItem, Error = MercuryError>> {
         match id.audio_type {
-            SpotifyAudioType::Track => Track::get_audio_item(session, id),
+            SpotifyAudioType::Track => {
+                warn!("Trackkk");
+                Track::get_audio_item(session, id)
+            },
             SpotifyAudioType::Podcast => Episode::get_audio_item(session, id),
             SpotifyAudioType::NonPlayable => {
                 Box::new(future::err::<AudioItem, MercuryError>(MercuryError))
